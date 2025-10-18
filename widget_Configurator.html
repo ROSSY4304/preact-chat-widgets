@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Widget Configurator (Clean)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background: #f4f6fa; font-family: 'Segoe UI', Arial, sans-serif; margin:0;}
+    .dashboard { max-width: 1100px; margin:48px auto; display:flex; gap:40px; flex-wrap:wrap;}
+    .left, .right {flex:1 1 350px;min-width:325px;}
+    .left {display:flex;flex-direction:column;gap:22px;}
+    .card {background:#fff;border-radius:14px;box-shadow:0 7px 36px #8e72ca19; padding:27px 22px;margin-bottom:0;}
+    .card-header {display:flex;align-items:center;justify-content:space-between;}
+    .card-toggle {background:none;border:none;cursor:pointer;font-size:1.25em;}
+    .section-grid {display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+    .collapsed {display:none;}
+    .card strong {color:#7744d4;}
+    .card:hover {box-shadow:0 10px 28px #ac94d726;}
+    .input, textarea {border-radius:7px; border:1px solid #ccd; padding:10px; font-size:15px;width:100%;resize:none;}
+    label {font-weight:500; color:#7744d4;}
+    .preview-box {background:#fff;border-radius:15px;box-shadow:0 5px 24px #a85fdb19; border-top:8px solid #7744d4; margin-bottom:25px;position:relative; padding:0 0 17px 0;}
+    .preview-head {display:flex;align-items:center;gap:11px;padding:20px 18px 6px 18px;}
+    .preview-logo {width:44px;height:44px;border-radius:11px;object-fit:cover;border:2px solid #eee;box-shadow:0 1px 10px #a85fdb10;}
+    .quicklink {display:block;width:95%;margin:11px auto;background:#7744d4;padding:12px 10px;border-radius:9px;color:#fff;text-align:center;font-weight:500;text-decoration:none;transition:background .2s;}
+    .quicklink:hover {background:#573aa3;}
+    .embed-area {background:#f9fafe;padding:14px;border-radius:9px;font-family:monospace;font-size:15px;border:1px solid #ece7ef;min-height:80px;}
+    .copy-btn {margin:12px 0;padding:9px 18px;background:#7744d4;border:none;color:#fff;font-weight:500;border-radius:6px;cursor:pointer;box-shadow:0 2px 8px #ad8bd545;}
+    input[type='color'] {width:38px;height:38px; border-radius:7px;border:none;background:#eee;}
+    .mini-note {font-size:12px;color:#ad8bd5;margin-top:5px;}
+    h2 {font-size:1.09em; color:#53329f;}
+    @media (max-width:900px) {.dashboard{flex-direction:column;gap:10px;}}
+    .logo-error {color:#c44;padding:8px 0;font-size:14px;}
+  </style>
+  <script type="module">
+    import { h, render, Component } from "https://esm.sh/preact";
+    import htm from "https://esm.sh/htm";
+    const html = htm.bind(h);
+
+    // Collapsible card component
+    class Card extends Component {
+      state = { open: true };
+      toggle = () => this.setState({ open: !this.state.open });
+      render({ title, children }) {
+        return html`
+          <div class="card">
+            <div class="card-header">
+              <strong>${title}</strong>
+              <button class="card-toggle" onClick=${this.toggle}>${this.state.open ? "−" : "+"}</button>
+            </div>
+            <div class=${this.state.open ? "" : "collapsed"}>
+              ${children}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // Main dashboard UI
+    class Dashboard extends Component {
+      state = {
+        logo: "",
+        color: "#7744d4",
+        welcome: "Welcome! How can we help?",
+        links: [
+          { label: "Email Support", url: "mailto:support@example.com" },
+          { label: "Call Us", url: "tel:+123456789" },
+        ],
+        minimized: false,
+        welcomeScreen: true,
+        targeting: "",
+        copied: false
+      };
+
+      handleInput = e => { this.setState({ [e.target.name]: e.target.value }); };
+      handleToggle = n => { this.setState({ [n]: !this.state[n] }); };
+      handleLink = (idx, field, val) => {
+        const links = this.state.links.slice();
+        links[idx][field] = val;
+        this.setState({ links });
+      };
+      addLink = () => { this.setState({ links: [...this.state.links, { label:"", url:"" }] }); };
+      removeLink = idx => {
+        const links = this.state.links.slice();
+        links.splice(idx, 1);
+        this.setState({ links });
+      };
+
+      embedCode() {
+        const config = {
+          logo: this.state.logo,
+          color: this.state.color,
+          welcome: this.state.welcome,
+          links: this.state.links,
+          minimized: this.state.minimized,
+          welcomeScreen: this.state.welcomeScreen,
+          targeting: this.state.targeting
+        };
+        return [
+          "<!-- Embeddable Widget -->",
+          "<script src='https://yourdomain.com/widget.js'></script>",
+          "<script>",
+          "window.ChatWidgetConfig = " + JSON.stringify(config, null, 2),
+          "</script>"
+        ].join("\n");
+      }
+
+      copyEmbed = () => {
+        navigator.clipboard.writeText(this.embedCode());
+        this.setState({ copied: true });
+        setTimeout(()=>this.setState({copied:false}), 1200);
+      };
+
+      render(_, s) {
+        return html`
+          <div class="dashboard">
+            <div class="left">
+              <${Card} title="Appearance">
+                <div class="section-grid">
+                  <label>
+                    Logo URL<br>
+                    <input
+                      type="text"
+                      name="logo"
+                      class="input"
+                      value=${s.logo}
+                      onInput=${this.handleInput}
+                      placeholder="https://logo.com/image.png"
+                    />
+                  </label>
+                  <label>
+                    Color<br>
+                    <input
+                      type="color"
+                      name="color"
+                      value=${s.color}
+                      onInput=${this.handleInput}
+                    />
+                  </label>
+                </div>
+                <label style="margin-top:16px;">
+                  Welcome Message<br>
+                  <input
+                    type="text"
+                    name="welcome"
+                    class="input"
+                    value=${s.welcome}
+                    onInput=${this.handleInput}
+                    placeholder="Welcome! How can we help?"
+                  />
+                </label>
+              <//>
+              <${Card} title="Minimized State">
+                <label>
+                  <input type="checkbox" name="minimized" checked=${s.minimized} onChange=${e => this.handleToggle('minimized')} style="margin-right:8px;"/>
+                  Show widget as minimized icon
+                </label>
+              <//>
+              <${Card} title="Welcome Screen">
+                <label>
+                  <input type="checkbox" name="welcomeScreen" checked=${s.welcomeScreen} onChange=${e => this.handleToggle('welcomeScreen')} style="margin-right:8px;"/>
+                  Show welcome screen
+                </label>
+              <//>
+              <${Card} title="Quick Links">
+                <div style="margin-bottom:4px;">
+                  ${s.links.map((l, i) => html`
+                    <div style="display:flex;gap:8px;margin-bottom:11px;">
+                      <input type="text" value=${l.label} placeholder="Label" style="width:43%;" class="input"
+                        onInput=${e => this.handleLink(i, "label", e.target.value)} />
+                      <input type="text" value=${l.url} placeholder="URL" style="width:48%;" class="input"
+                        onInput=${e => this.handleLink(i,"url",e.target.value)} />
+                      <button onClick=${()=>this.removeLink(i)} style="border:none;background:transparent;color:#d22;font-size:18px;">×</button>
+                    </div>
+                  `)}
+                  <button onClick=${this.addLink} style="padding:8px 16px;background:#f4f6fa;border:none;border-radius:6px;cursor:pointer;font-weight:500;color:#7744d4;">+ Add link</button>
+                </div>
+              <//>
+              <${Card} title="Targeting">
+                <label>
+                  Show on these pages:<br>
+                  <input
+                    type="text"
+                    name="targeting"
+                    class="input"
+                    value=${s.targeting}
+                    onInput=${this.handleInput}
+                    placeholder="/home, /pricing"
+                  />
+                  <div class="mini-note">Comma-separated URL paths</div>
+                </label>
+              <//>
+            </div>
+            <div class="right">
+              <div>
+                <h2>Widget Preview</h2>
+                <div class="preview-box" style=${`border-top:8px solid ${s.color};${s.minimized ? "height:92px;display:flex;justify-content:center;align-items:center;" : ""}`}>
+                  ${s.minimized
+                    ? html`<button style="background:${s.color};color:#fff;border:none;border-radius:50%;width:60px;height:60px;font-size:32px;box-shadow:0 4px 11px #7744d430;cursor:pointer;">
+                          💬
+                        </button>`
+                    : html`
+                      <div class="preview-head">
+                        ${s.logo && html`<img src=${s.logo} class="preview-logo" alt="Logo" />`}
+                        <div style="font-weight:600;font-size:18px;color:#7744d4;">My Widget</div>
+                      </div>
+                      <div style="padding:0 19px;font-size:16px;color:#3b2360;margin-bottom:14px;">
+                        ${s.welcomeScreen ? s.welcome : ""}
+                      </div>
+                      <div style="padding:0 19px 10px 19px;">
+                        ${s.links.map(q =>
+                          html`<a href=${q.url} class="quicklink" target="_blank" style=${`background:${s.color};`}>
+                            ${q.label || "Quick Link"}
+                          </a>`
+                        )}
+                      </div>
+                    `
+                  }
+                </div>
+              </div>
+              <h2 style="margin-top:0.2em;">Embed Code</h2>
+              <textarea readonly rows="10" class="embed-area">${this.embedCode()}</textarea>
+              <button class="copy-btn" onClick=${this.copyEmbed} style="margin-top:3px;">
+                ${s.copied ? "✅ Copied!" : "Copy Code"}
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    render(html`<${Dashboard} />`, document.body);
+  </script>
+</head>
+<body></body>
+</html>
